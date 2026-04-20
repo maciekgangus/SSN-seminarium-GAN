@@ -1,0 +1,778 @@
+% ============================================================
+%  GAN Presentation — Maciej Leśniak & Bartłomiej Obrochta
+%  Sztuczne Sieci Neuronowe | 22 kwietnia 2026
+%  Compile: xelatex gan_presentation.tex (twice)
+% ============================================================
+\documentclass[aspectratio=169,12pt]{beamer}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{polish}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{Liberation Mono}
+
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{pgf-pie}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,backgrounds}
+
+% ── Colour palette ───────────────────────────────────────────
+\definecolor{ganblue}{RGB}{15,52,96}
+\definecolor{ganaccent}{RGB}{232,93,16}
+\definecolor{ganteal}{RGB}{0,168,150}
+\definecolor{ganlightbg}{RGB}{240,245,255}
+\definecolor{ganmid}{RGB}{100,140,200}
+\definecolor{gangray}{RGB}{80,90,110}
+
+% ── Theme ────────────────────────────────────────────────────
+\usetheme{metropolis}
+\setbeamercolor{palette primary}{bg=ganblue,fg=white}
+\setbeamercolor{titlelike}{parent=palette primary}
+\setbeamercolor{frametitle}{bg=ganblue,fg=white}
+\setbeamercolor{progress bar}{fg=ganaccent}
+\setbeamercolor{alerted text}{fg=ganaccent}
+\setbeamercolor{block title}{bg=ganblue!90,fg=white}
+\setbeamercolor{block body}{bg=ganlightbg}
+\setbeamercolor{structure}{fg=ganblue}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamerfont{title}{size=\huge,series=\bfseries}
+\metroset{progressbar=frametitle,sectionpage=none,numbering=fraction}
+
+% ── Helpers ──────────────────────────────────────────────────
+\newcommand{\imgph}[2][.92\linewidth]{%
+  \begin{tikzpicture}
+    \node[draw=ganmid,dashed,fill=ganlightbg,minimum width=#1,
+          minimum height=3.6cm,rounded corners=6pt,inner sep=0](b){};
+    \node[text=ganmid,font=\small\itshape] at (b.center){[ #2 ]};
+  \end{tikzpicture}}
+
+\newcommand{\abox}[1]{%
+  \begin{tikzpicture}
+    \node[draw=ganaccent,fill=ganaccent!8,rounded corners=4pt,
+          inner sep=7pt,text width=\linewidth-18pt,line width=1.4pt,font=\small]{#1};
+  \end{tikzpicture}}
+
+% ── Metadata ─────────────────────────────────────────────────
+\title{Generative Adversarial Networks}
+\subtitle{Sieci neuronowe typu GAN}
+\author{Maciej Leśniak \and Bartłomiej Obrochta}
+\institute{Sztuczne Sieci Neuronowe — AGH Kraków}
+\date{22 kwietnia 2026}
+
+\begin{document}
+
+{\setbeamertemplate{footline}{}
+\begin{frame}[plain]\maketitle\end{frame}}
+
+%% ─────────────────────── AGENDA ─────────────────────────────
+\begin{frame}{Plan prezentacji}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{enumerate}
+  \item \textbf{Rys historyczny}
+  \item Intuicja: fałszerz i policjant
+  \item Architektura GAN
+  \item \textbf{Formalizm matematyczny}
+  \item Trening krok po kroku
+  \item \textbf{Problemy} (mode collapse, gradienty)
+\end{enumerate}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{enumerate}\setcounter{enumi}{6}
+  \item Warianty: DCGAN, CGAN, WGAN, StyleGAN, CycleGAN
+  \item Zastosowania
+  \item GAN vs.\ Diffusion Models
+  \item Etyka i deepfake'i
+  \item Live demo — Jupyter
+\end{enumerate}
+\end{column}
+\end{columns}
+\vspace{0.6em}
+\abox{Pytania możecie zadawać na bieżąco.}
+\end{frame}
+
+%% ─────────────────────── HISTORIA ───────────────────────────
+\begin{frame}{Rys historyczny}
+\begin{columns}[T]
+\begin{column}{0.52\textwidth}
+\begin{tikzpicture}[
+  box/.style={draw=ganblue!40,fill=ganlightbg,rounded corners=4pt,
+    minimum width=4.3cm,minimum height=0.62cm,font=\small,inner sep=4pt},
+  acc/.style={box,fill=ganaccent!15,draw=ganaccent},
+  yr/.style={font=\bfseries\small,text=ganaccent},
+  a/.style={ganblue!50,line width=1.1pt}]
+  \node[yr](y0){2000s};
+  \node[box,right=0.3cm of y0](b0){RBM + MCMC (Hinton)};
+  \node[yr,below=0.32cm of y0](y1){2013};
+  \node[box,right=0.3cm of y1](b1){VAE — rozmyte obrazy};
+  \node[yr,below=0.32cm of y1](y2){2014};
+  \node[acc,right=0.3cm of y2](b2){\textbf{GAN — Goodfellow}};
+  \node[yr,below=0.32cm of y2](y3){2015};
+  \node[box,right=0.3cm of y3](b3){DCGAN};
+  \node[yr,below=0.32cm of y3](y4){2017};
+  \node[box,right=0.3cm of y4](b4){WGAN, Pix2Pix, CycleGAN};
+  \node[yr,below=0.32cm of y4](y5){2018};
+  \node[box,right=0.3cm of y5](b5){StyleGAN (NVIDIA)};
+  \node[yr,below=0.32cm of y5](y6){2020+};
+  \node[box,right=0.3cm of y6](b6){Diffusion Models dominują};
+  \foreach \x/\y in {y0/y1,y1/y2,y2/y3,y3/y4,y4/y5,y5/y6}
+    \draw[a](\x.south)--(\y.north);
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{block}{Ian Goodfellow, 2014}
+\small Prototyp zakodowany \textbf{w jedną noc}. Zadziałało od razu.
+\end{block}
+\vspace{0.4em}
+\abox{\textbf{Yann LeCun (2016):}\\
+\emph{„GANy to najciekawszy pomysł w~ML ostatnich dziesięciu lat."}}
+\vspace{0.5em}
+\imgph[.95\linewidth]{Zdjęcie: Ian Goodfellow}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── INTUICJA ───────────────────────────
+\begin{frame}{Intuicja: fałszerz i policjant}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\begin{tikzpicture}[
+  bl/.style={rounded corners=6pt,minimum width=2.5cm,minimum height=0.95cm,
+    align=center,font=\small\bfseries},
+  a/.style={-{Stealth},thick,line width=1.2pt}]
+  \node[bl,fill=ganaccent!80,text=white](gen){Generator\\(fałszerz)};
+  \node[bl,fill=ganblue,text=white,right=2.5cm of gen](dis){Discriminator\\(policjant)};
+  \node[bl,fill=ganteal!70,text=white,above=1.0cm of dis](real){Prawdziwe dane};
+  \node[font=\scriptsize,text=gangray,below=0.5cm of gen](noise){szum $\mathbf{z}\sim\mathcal{N}(0,\mathbf{I})$};
+  \node[font=\scriptsize\bfseries,text=ganblue,right=0.5cm of dis](out){Real / Fake};
+  \draw[a,gangray!60](noise)--(gen);
+  \draw[a,ganaccent!90](gen)--node[above,font=\scriptsize]{$G(\mathbf{z})$}(dis);
+  \draw[a,ganteal!90](real)--(dis);
+  \draw[a,ganblue](dis)--(out);
+  \draw[a,dashed,gangray,bend right=40](dis.south) to
+    node[below,font=\scriptsize,text=gangray]{gradient / feedback}(gen.south);
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{itemize}
+  \item Generator \textbf{nigdy nie widzi} prawdziwych danych bezpośrednio
+  \item Jedyna informacja = ocena Discriminatora
+  \item To \textbf{czysta rywalizacja} — nie współpraca
+  \item Rywalizacja sprawia, że oba modele się doskonalą
+\end{itemize}
+\vspace{0.4em}
+\imgph[.95\linewidth]{Ilustracja: fałszerz i policjant}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── ARCHITEKTURA ───────────────────────
+\begin{frame}{Architektura GAN}
+\begin{center}
+\begin{tikzpicture}[
+  bl/.style={rounded corners=5pt,minimum width=2.1cm,minimum height=0.88cm,
+    align=center,font=\small},
+  a/.style={-{Stealth[scale=1.1]},line width=1.2pt}]
+  \node[bl,fill=gangray!20](z){$\mathbf{z}$\\\tiny szum};
+  \node[bl,fill=ganaccent!80,text=white,right=1.2cm of z](G){\textbf{Generator}\\\tiny $G_\theta(\mathbf{z})$};
+  \node[bl,fill=ganblue!70,text=white,right=1.5cm of G](D){\textbf{Discriminator}\\\tiny $D_\phi(\cdot)$};
+  \node[bl,fill=ganteal!60,text=white,above=0.95cm of D](X){Prawdziwe\\\tiny $\mathbf{x}\sim p_{\text{data}}$};
+  \node[font=\scriptsize\bfseries,text=ganblue,right=0.7cm of D](out){$D\in[0,1]$\\Real/Fake};
+  \draw[a,gangray!60](z)--(G);
+  \draw[a,ganaccent!90](G)--node[above,font=\tiny]{$G(\mathbf{z})$}(D);
+  \draw[a,ganteal!90](X)--(D);
+  \draw[a,ganblue](D)--(out);
+  \draw[a,dashed,ganaccent!70,bend right=32](D.south) to
+    node[below,font=\tiny,text=gangray]{$\nabla_\theta\mathcal{L}_G$}(G.south);
+  \node[font=\tiny,text=red!70,above=0.15cm of G.north east]{G nie widzi $\mathbf{x}$!};
+\end{tikzpicture}
+\end{center}
+\vspace{0.2em}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Generator} $G_\theta$:
+\begin{itemize}
+  \item Wejście: $\mathbf{z}\in\mathbb{R}^{100}$, $\mathbf{z}\sim\mathcal{N}(0,\mathbf{I})$
+  \item Wyjście: obraz ($28{\times}28$ — MNIST)
+  \item Na początku: wizualny szum
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Discriminator} $D_\phi$:
+\begin{itemize}
+  \item Klasyfikator binarny
+  \item Wyjście: $D(\mathbf{x})\in[0,1]$
+  \item $1=$ prawdziwy,\ $0=$ fałszywy
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── MATH ───────────────────────────────
+\begin{frame}{Formalizm matematyczny — Minimax}
+\begin{center}
+\begin{tikzpicture}
+\node[draw=ganblue,fill=ganlightbg,rounded corners=6pt,inner sep=12pt,line width=1.8pt]{
+$\displaystyle
+\min_{G}\;\max_{D}\;V(D,G)=
+\underbrace{\mathbb{E}_{\mathbf{x}\sim p_{\text{data}}}\!\bigl[\log D(\mathbf{x})\bigr]}_{\text{prawdziwe dane}}
++
+\underbrace{\mathbb{E}_{\mathbf{z}\sim p_z}\!\bigl[\log\!\bigl(1-D(G(\mathbf{z}))\bigr)\bigr]}_{\text{wygenerowane dane}}
+$};
+\end{tikzpicture}
+\end{center}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{Discriminator} ($\max_D$):
+\begin{itemize}
+  \item Chce $D(\mathbf{x})\to 1$ (prawdziwe)
+  \item Chce $D(G(\mathbf{z}))\to 0$ (fałszywe)
+  \item Maksymalizuje $V$
+\end{itemize}
+\textbf{Generator} ($\min_G$):
+\begin{itemize}
+  \item Chce $D(G(\mathbf{z}))\to 1$
+  \item Minimalizuje $V$
+\end{itemize}
+\textbf{Nash optimum:} $D^*(\mathbf{x})=\tfrac{1}{2}\ \forall\,\mathbf{x}$
+\end{column}
+\begin{column}{0.49\textwidth}
+\textbf{Non-saturating loss (trik):}
+\vspace{0.3em}
+
+Oryginalna (nasyca się):
+\[\min_G\log\!\bigl(1-D(G(\mathbf{z}))\bigr)\]
+Zamiennik (silniejszy gradient):
+\begin{center}
+\begin{tikzpicture}
+\node[draw=ganaccent,fill=ganaccent!10,rounded corners=4pt,inner sep=8pt]{
+$\displaystyle\max_G\;\log D(G(\mathbf{z}))$};
+\end{tikzpicture}
+\end{center}
+\vspace{0.2em}
+{\small Matematycznie ekwiwalentne w optimum, ale gradient na początku treningu dużo silniejszy.}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── LOSS PLOTS ─────────────────────────
+\begin{frame}{Funkcje straty — wizualizacja}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=6.4cm,height=5.5cm,
+  xlabel={$D(G(\mathbf{z}))$},ylabel={wartość},
+  xmin=0.01,xmax=0.99,ymin=-4,ymax=0.4,
+  legend style={font=\tiny,at={(0.97,0.97)},anchor=north east},
+  title={\small Strata Generatora},title style={font=\small\bfseries},
+  grid=major,grid style={gray!20}]
+  \addplot[ganaccent,thick,domain=0.01:0.99,samples=120]{ln(1-x)};
+  \addlegendentry{$\log(1-D(G))$ [nasyca się]}
+  \addplot[ganteal,thick,dashed,domain=0.01:0.99,samples=120]{ln(x)};
+  \addlegendentry{$\log D(G)$ [NS, lepszy]}
+\end{axis}
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=6.4cm,height=5.5cm,
+  xlabel={iteracja},ylabel={loss},
+  xmin=0,xmax=100,ymin=0,ymax=3.2,
+  legend style={font=\tiny,at={(0.97,0.97)},anchor=north east},
+  title={\small Typowy przebieg treningu GAN},title style={font=\small\bfseries},
+  grid=major,grid style={gray!20}]
+  \addplot[ganblue,thick,domain=0:100,samples=150]
+    {1.2+0.5*sin(deg(x/4.5))*exp(-x/50)+0.08*sin(deg(x*1.7))};
+  \addlegendentry{$\mathcal{L}_D$}
+  \addplot[ganaccent,thick,domain=0:100,samples=150]
+    {1.8-0.4*sin(deg(x/3+1))*exp(-x/40)+0.1*sin(deg(x*2.1))};
+  \addlegendentry{$\mathcal{L}_G$}
+  \addplot[ganteal,dashed,thick,domain=0:100,samples=2]{2.772};
+  \addlegendentry{Nash: $2\ln 2$}
+\end{axis}
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── TRAINING ALGO ──────────────────────
+\begin{frame}{Algorytm treningu GAN — krok po kroku}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{block}{Krok 1 — trenuj Discriminatora}
+\begin{enumerate}\small
+  \item Zamroź $G$
+  \item Real batch $\{\mathbf{x}^{(i)}\}$, etykieta $y=1$
+  \item Fake batch $\{G(\mathbf{z}^{(i)})\}$, etykieta $y=0$
+  \item $\mathcal{L}_D = {-}\tfrac{1}{m}\!\sum_i\bigl[\log D(\mathbf{x}^{(i)})
+    {+}\log(1{-}D(G(\mathbf{z}^{(i)})))\bigr]$
+  \item \texttt{.detach()} na $G(\mathbf{z})$ \alert{— kluczowe!}
+  \item Backprop, aktualizuj tylko $\phi$
+\end{enumerate}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Krok 2 — trenuj Generator}
+\begin{enumerate}\small
+  \item Zamroź $D$
+  \item Fake batch \emph{bez} \texttt{.detach()}
+  \item Etykieta $y=\alert{1}$ (NIE 0!)
+  \item $\mathcal{L}_G = {-}\tfrac{1}{m}\!\sum_i \log D(G(\mathbf{z}^{(i)}))$
+  \item Backprop przez $D$ do $G$
+  \item Aktualizuj tylko $\theta$
+\end{enumerate}
+\end{block}
+\vspace{0.4em}
+\abox{\textbf{Osobne optymizatory:} Adam, $\eta{=}0.0002$, $\beta_1{=}0.5$}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── MODE COLLAPSE ──────────────────────
+\begin{frame}{Problem: Mode Collapse}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=6.4cm,height=5cm,
+  xlabel={$x$},ylabel={$p(x)$},
+  xmin=-6,xmax=6,ymin=0,ymax=0.48,
+  title={\small Rozkład prawdziwy vs.\ collapsed},title style={font=\small\bfseries},
+  legend style={font=\tiny,at={(0.97,0.97)},anchor=north east},
+  grid=major,grid style={gray!15},axis lines=left]
+  \addplot[ganteal,thick,domain=-6:6,samples=200]
+    {0.21*exp(-0.5*(x+3)^2/0.55)+0.21*exp(-0.5*(x-3)^2/0.55)};
+  \addlegendentry{$p_{\text{data}}$ — bimodalny}
+  \addplot[ganaccent,thick,dashed,domain=-6:6,samples=200]
+    {0.42*exp(-0.5*(x-3)^2/0.25)};
+  \addlegendentry{$p_G$ — collapsed!}
+\end{axis}
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{itemize}
+  \item Generator „kolapsuje" do 1–2 trybów zamiast modelować cały rozkład
+  \item Przykład: MNIST — same jedynki
+\end{itemize}
+\vspace{0.5em}
+\textbf{Metody zaradcze:}
+\begin{itemize}
+  \item \textbf{Minibatch discrimination} — Discriminator porównuje próbki w batchu
+  \item \textbf{Feature matching} — dopasowanie statystyk pośrednich warstw
+  \item \textbf{WGAN} — fundamentalna zmiana metryki
+\end{itemize}
+\vspace{0.4em}
+\imgph[.95\linewidth]{Mode collapse — przykład na MNIST}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── GRADIENTY + FID ────────────────────
+\begin{frame}{Zanikające gradienty i metryki jakości}
+\begin{columns}[T]
+\begin{column}{0.46\textwidth}
+\textbf{Zanikające gradienty:}
+\begin{tikzpicture}
+\begin{axis}[width=6cm,height=4.2cm,
+  xlabel={$D(G(\mathbf{z}))$},ylabel={gradient},
+  xmin=0.001,xmax=0.5,ymin=-15,ymax=0,
+  title={\small $\nabla\log(1-D(G(\mathbf{z})))$},
+  title style={font=\scriptsize\bfseries},
+  grid=major,grid style={gray!15},axis lines=left]
+  \addplot[ganaccent,thick,domain=0.001:0.49,samples=150]{-1/(1-x)};
+\end{axis}
+\end{tikzpicture}
+{\small Zbyt dobry $D$ $\Rightarrow$ gradient $\approx 0$ $\Rightarrow$ G~przestaje się uczyć}
+\end{column}
+\begin{column}{0.51\textwidth}
+\textbf{Metryki jakości:}
+\vspace{0.4em}
+
+\begin{tabular}{@{}lll@{}}
+\toprule Metryka & Rok & Idea \\ \midrule
+IS & 2016 & Inception Score \\
+\textbf{FID} & \textbf{2017} & \textbf{Fréchet Inception Dist.} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\begin{block}{FID (aktualny standard)}
+\[
+\mathrm{FID} = \|\mu_r{-}\mu_g\|^2
++ \mathrm{tr}\!\Bigl(\Sigma_r{+}\Sigma_g
+  {-}2\bigl(\Sigma_r\Sigma_g\bigr)^{\!\frac{1}{2}}\Bigr)
+\]
+\textbf{Mniejsze FID = lepszy model.}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── DCGAN ──────────────────────────────
+\begin{frame}{DCGAN (2015) — Deep Convolutional GAN}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\textbf{Kluczowe innowacje:}
+\begin{itemize}
+  \item \textbf{Transposed convolutions} w G:\\
+        $4{\times}4\to8{\times}8\to\cdots\to64{\times}64$
+  \item \textbf{Strided convolutions} zamiast MaxPool w D
+  \item Batch Normalization po każdej warstwie
+  \item ReLU (G) / LeakyReLU (D) / Tanh (wyjście G)
+\end{itemize}
+\vspace{0.4em}
+\textbf{Arytmetyka w przestrzeni latentnej:}
+\vspace{0.3em}
+
+\begin{tikzpicture}[font=\small,node distance=0.15cm]
+  \node(a){$\mathbf{z}_{\text{mężczyzna+okulary}}$};
+  \node[below=0.1cm of a](b){$-\;\mathbf{z}_{\text{mężczyzna}}$};
+  \node[below=0.1cm of b](c){$+\;\mathbf{z}_{\text{kobieta}}$};
+  \draw[ganblue,thick]([xshift=-3pt]a.south west)--([xshift=-3pt]c.north west);
+  \node[right=0.3cm of c,text=ganaccent,font=\bfseries\small]{$=$ kobieta+okulary};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.47\textwidth}
+\imgph[.95\linewidth]{Architektura generatora DCGAN}
+\vspace{0.5em}
+\imgph[.95\linewidth]{Wygenerowane twarze DCGAN}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── WGAN ───────────────────────────────
+\begin{frame}{WGAN — Earth Mover's Distance}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\textbf{Problem z JS-dywergencją:}
+\[
+\mathrm{JSD}(p_r\|p_g)=
+\begin{cases}\log 2 & \text{gdy }p_r\cap p_g=\emptyset\\
+<\log 2 & \text{inaczej}\end{cases}
+\]
+Stała wartość $\Rightarrow$ brak gradientu.
+
+\vspace{0.4em}
+\textbf{Earth Mover's Distance:}
+\[W(p_r,p_g)=\inf_{\gamma\in\Pi(p_r,p_g)}\mathbb{E}_{(x,y)\sim\gamma}\bigl[\|x{-}y\|\bigr]\]
+
+\textbf{Obiektyw WGAN (Critic $f$):}
+\[\min_G\max_{\|f\|_L\le1}\mathbb{E}_{x\sim p_r}[f(x)]-\mathbb{E}_{z}[f(G(z))]\]
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=6.2cm,height=4.5cm,
+  xlabel={odległość między rozkładami},ylabel={wartość metryki},
+  xmin=0,xmax=5,ymin=0,ymax=4,
+  legend style={font=\tiny,at={(0.06,0.95)},anchor=north west},
+  title={\small JS vs.\ Wasserstein},title style={font=\small\bfseries},
+  grid=major,grid style={gray!15}]
+  \addplot[gangray,thick,domain=0:5,samples=3]{2.772};
+  \addlegendentry{JSD = stała}
+  \addplot[ganaccent,thick,domain=0:5,samples=50]{0.7*x};
+  \addlegendentry{$W$ — liniowo rośnie}
+\end{axis}
+\end{tikzpicture}
+\vspace{0.3em}
+\abox{\textbf{Efekty WGAN:} stabilniejszy trening, brak mode collapse, loss Critica \textbf{koreluje z jakością}}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── STYLEGAN ───────────────────────────
+\begin{frame}{StyleGAN (NVIDIA, 2018)}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{tikzpicture}[
+  bl/.style={rounded corners=4pt,minimum width=3cm,minimum height=0.68cm,
+    font=\small,align=center},
+  a/.style={-{Stealth},thick}]
+  \node[bl,fill=gangray!20](z){$\mathbf{z}\in\mathcal{Z}$};
+  \node[bl,fill=ganblue!70,text=white,below=0.42cm of z](f){Mapping Net $f$ ($8{\times}$FC)};
+  \node[bl,fill=ganteal!60,text=white,below=0.42cm of f](w){$\mathbf{w}\in\mathcal{W}$ (rozplątana)};
+  \node[bl,fill=ganaccent!70,text=white,below=0.42cm of w](ada){AdaIN (każda warstwa konw.)};
+  \node[bl,fill=ganlightbg,draw=ganblue,below=0.42cm of ada](img){Obraz wyjściowy};
+  \draw[a](z)--(f); \draw[a](f)--(w); \draw[a](w)--(ada); \draw[a](ada)--(img);
+\end{tikzpicture}
+\vspace{0.3em}
+{\small $\mathcal{Z}$: splątana $\;\to\;$ $\mathcal{W}$: niezależne atrybuty}
+\end{column}
+\begin{column}{0.47\textwidth}
+\textbf{Kontrola stylu per warstwa:}
+\begin{itemize}
+  \item Niskie warstwy $\to$ kształt, poza
+  \item Średnie warstwy $\to$ rysy twarzy
+  \item Wysokie warstwy $\to$ kolor, tekstura
+\end{itemize}
+\vspace{0.4em}
+\abox{\textbf{thispersondoesnotexist.com}\\Żadna z tych twarzy nie istnieje.\\StyleGAN działa w czasie rzeczywistym.}
+\vspace{0.4em}
+\imgph[.95\linewidth]{Twarze wygenerowane przez StyleGAN}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── CYCLEGAN ───────────────────────────
+\begin{frame}{CycleGAN (2017) — bez sparowanych danych}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{center}
+\begin{tikzpicture}[
+  bl/.style={rounded corners=5pt,minimum width=1.8cm,minimum height=0.78cm,
+    font=\small,align=center},
+  a/.style={-{Stealth},thick,line width=1.2pt}]
+  \node[bl,fill=ganteal!50,text=white](X){$X$\\koń};
+  \node[bl,fill=ganaccent!70,text=white,right=2.5cm of X](Y){$Y$\\zebra};
+  \node[bl,fill=ganblue!50,text=white,below=0.9cm of X](Xr){$F(G(x))\approx x$};
+  \node[bl,fill=ganblue!50,text=white,below=0.9cm of Y](Yr){$G(F(y))\approx y$};
+  \draw[a,ganteal](X) to[bend left=22] node[above,font=\tiny]{$G$}(Y);
+  \draw[a,ganaccent](Y) to[bend left=22] node[below,font=\tiny]{$F$}(X);
+  \draw[a,dashed,ganblue!60](Y)--(Yr);
+  \draw[a,dashed,ganblue!60](X)--(Xr);
+\end{tikzpicture}
+\end{center}
+\vspace{0.3em}
+\textbf{Cycle Consistency Loss:}
+\[
+\mathcal{L}_{\mathrm{cyc}}=
+\mathbb{E}_x\!\bigl[\|F(G(x)){-}x\|_1\bigr]
++\mathbb{E}_y\!\bigl[\|G(F(y)){-}y\|_1\bigr]
+\]
+\end{column}
+\begin{column}{0.47\textwidth}
+\textbf{Przykłady zastosowań:}
+\begin{itemize}
+  \item Konie $\leftrightarrow$ Zebry
+  \item Lato $\leftrightarrow$ Zima
+  \item Zdjęcia $\leftrightarrow$ Obrazy (Monet)
+  \item Mapa $\leftrightarrow$ Zdjęcie satelitarne
+\end{itemize}
+\vspace{0.4em}
+\imgph[.95\linewidth]{CycleGAN: koń $\to$ zebra}
+\vspace{0.3em}
+{\small\textbf{Przewaga:} dwa \emph{niesparowane} zbiory wystarczą}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── ZASTOSOWANIA ───────────────────────
+\begin{frame}{Zastosowania GANów}
+\begin{columns}[T]
+\begin{column}{0.32\textwidth}
+\begin{block}{Przemysł}
+\small\begin{itemize}
+  \item Super-resolution (ESRGAN)
+  \item Zdjęcia produktów
+  \item Augmentacja danych
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{Medycyna}
+\small\begin{itemize}
+  \item Syntetyczne MRI/CT
+  \item Prywatność pacjentów
+  \item Rzadkie choroby
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+\begin{block}{Nauka}
+\small\begin{itemize}
+  \item CERN — CaloGAN
+  \item Drug discovery (MolGAN)
+  \item Fizyka cząstek
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.5em}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[width=11cm,height=3.7cm,
+  symbolic x coords={Super-res,Inpainting,Medycyna,{Gry RT},Drug disc.,{Deepfake det.}},
+  xtick=data,xticklabel style={font=\small},
+  ylabel={dojrzałość},ymin=0,ymax=10,
+  ybar,bar width=0.9cm,
+  title={\small Dojrzałość zastosowań GANów},title style={font=\small\bfseries},
+  grid=major,grid style={gray!15},
+  nodes near coords,nodes near coords style={font=\tiny,above}]
+  \addplot[fill=ganblue!80,draw=none]
+    coordinates{(Super-res,9)(Inpainting,8)(Medycyna,6)({Gry RT},8)(Drug disc.,5)({Deepfake det.},7)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+%% ─────────────────────── GAN vs DIFFUSION ───────────────────
+\begin{frame}{GAN vs.\ Diffusion Models}
+\begin{columns}[T]
+\begin{column}{0.46\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[width=6cm,height=5.5cm,
+  symbolic x coords={Szybkość,Różnorodność,FID,Stabilność,Kontrola},
+  xtick=data,xticklabel style={font=\tiny,rotate=25,anchor=east},
+  ymin=0,ymax=10,ybar,bar width=0.32cm,
+  legend style={font=\tiny,at={(0.97,0.97)},anchor=north east},
+  title={\small Porównanie},title style={font=\small\bfseries},
+  grid=major,grid style={gray!15}]
+  \addplot[fill=ganaccent!80,draw=none]
+    coordinates{(Szybkość,9)(Różnorodność,6)(FID,7)(Stabilność,5)(Kontrola,7)};
+  \addlegendentry{GAN}
+  \addplot[fill=ganteal!80,draw=none]
+    coordinates{(Szybkość,3)(Różnorodność,9)(FID,9)(Stabilność,9)(Kontrola,8)};
+  \addlegendentry{Diffusion}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{column}
+\begin{column}{0.51\textwidth}
+\vspace{0.4em}
+\begin{tabular}{@{}lcc@{}}
+\toprule & \textbf{GAN} & \textbf{Diffusion} \\ \midrule
+Generowanie & 1 forward pass & 50–1000 kroków \\
+Czas & $\sim$ms & sekundy \\
+FID & dobry & lepszy \\
+Mode collapse & tak & nie \\
+Trening & trudny & stabilny \\
+\bottomrule
+\end{tabular}
+\vspace{0.6em}
+\abox{\textbf{Nisza GANów:} wszędzie gdzie kluczowa jest \textbf{szybkość} — super-resolution w grach (AMD FSR), real-time video, hybrydy GAN+Diffusion}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── ETYKA ──────────────────────────────
+\begin{frame}{Etyka i deepfake'i}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\textbf{Zagrożenia:}
+\begin{itemize}
+  \item Deepfake'i — szantaż, manipulacja polityczna
+  \item Dezinformacja wizualna
+  \item Bias modelu = bias w danych
+  \item NCII (non-consensual intimate imagery)
+\end{itemize}
+\vspace{0.4em}
+\textbf{Odpowiedzi:}
+\begin{itemize}
+  \item Detektory deepfake'ów
+  \item Digital watermarking (C2PA)
+\end{itemize}
+\vspace{0.4em}
+\abox{\textbf{EU AI Act (2024):} obowiązkowe oznaczanie treści generowanych przez AI}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\pie[color={ganaccent!80,ganblue!70,ganteal!60,gangray!50},
+    text=legend,radius=2.1,style={font=\small}]{
+  35/Dezinformacja,
+  30/Deepfake wideo,
+  20/Bias \& fairness,
+  15/Prywatność}
+\end{tikzpicture}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── DEMO ───────────────────────────────
+\begin{frame}{Demo — GAN na MNIST (PyTorch)}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{block}{Architektura MLP-GAN}
+\textbf{Generator:}
+\[\mathbf{z}(100)\xrightarrow{\text{FC+BN+ReLU}}256\to512\to784\xrightarrow{\tanh}\hat{\mathbf{x}}\]
+\textbf{Discriminator:}
+\[\mathbf{x}(784)\xrightarrow{\text{FC+LReLU}}512\to256\to1\xrightarrow{\sigma}D(\mathbf{x})\]
+\end{block}
+\vspace{0.4em}
+\abox{\textbf{Na co zwrócić uwagę:}\\
+\texttt{.detach()} przy kroku D\\
+Etykieta \texttt{1} przy kroku G\\
+Normalizacja do $[-1,1]$ (Tanh)}
+\end{column}
+\begin{column}{0.47\textwidth}
+\imgph[.95\linewidth]{Epoch 1 — szum wizualny}
+\vspace{0.4em}
+\imgph[.95\linewidth]{Epoch 50 — rozpoznawalne cyfry}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── PODSUMOWANIE ───────────────────────
+\begin{frame}{Podsumowanie}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\begin{tikzpicture}[
+  it/.style={draw=ganblue!30,fill=ganlightbg,rounded corners=4pt,
+    minimum width=7.2cm,minimum height=0.70cm,
+    font=\small,inner sep=6pt,align=left},
+  nm/.style={circle,fill=ganaccent,text=white,font=\bfseries\small,
+    minimum size=0.50cm,inner sep=0}]
+  \node[it](i1) at(0,0){Generator vs.\ Discriminator = czysta rywalizacja};
+  \node[nm] at([xshift=6pt]i1.west){1};
+  \node[it](i2) at(0,-0.88cm){$\min_G\max_D V(D,G)$ — gra dwuosobowa};
+  \node[nm] at([xshift=6pt]i2.west){2};
+  \node[it](i3) at(0,-1.76cm){WGAN: Wasserstein zamiast JS $\to$ stabilność};
+  \node[nm] at([xshift=6pt]i3.west){3};
+  \node[it](i4) at(0,-2.64cm){StyleGAN: rozplątana przestrzeń $\mathcal{W}$};
+  \node[nm] at([xshift=6pt]i4.west){4};
+  \node[it](i5) at(0,-3.52cm){CycleGAN: brak sparowanych danych};
+  \node[nm] at([xshift=6pt]i5.west){5};
+  \node[it](i6) at(0,-4.40cm){Nisza GANów: szybkość (ms) vs.\ Diffusion (s)};
+  \node[nm] at([xshift=6pt]i6.west){6};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[width=5.8cm,height=5.6cm,
+  title={\small Mapa wariantów GAN},title style={font=\small\bfseries},
+  xlabel={\small kontrola outputu},ylabel={\small jakość obrazu},
+  xmin=0,xmax=10,ymin=0,ymax=10,
+  grid=major,grid style={gray!15},axis lines=left]
+  \addplot[only marks,mark=*,mark size=5pt,ganblue]
+    coordinates{(2,3)} node[right,font=\tiny]{GAN'14};
+  \addplot[only marks,mark=*,mark size=5pt,ganaccent]
+    coordinates{(3,6)} node[right,font=\tiny]{DCGAN};
+  \addplot[only marks,mark=*,mark size=5pt,ganteal]
+    coordinates{(7,5)} node[right,font=\tiny]{CGAN};
+  \addplot[only marks,mark=*,mark size=5pt,ganblue!60]
+    coordinates{(4,7)} node[right,font=\tiny]{WGAN};
+  \addplot[only marks,mark=*,mark size=5pt,ganaccent!80]
+    coordinates{(8,9)} node[right,font=\tiny]{StyleGAN};
+  \addplot[only marks,mark=*,mark size=5pt,ganteal!70]
+    coordinates{(6,6)} node[right,font=\tiny]{CycleGAN};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% ─────────────────────── KONIEC ─────────────────────────────
+{\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+\vspace{2.5cm}
+\begin{center}
+  {\huge\bfseries\color{ganblue}Dziękujemy!}\\[0.8em]
+  {\large Pytania?}\\[1.8em]
+  \begin{tikzpicture}
+    \node[draw=ganaccent,fill=ganaccent!10,rounded corners=8pt,
+          inner sep=12pt,font=\large]{
+      Maciej Leśniak \quad\textbullet\quad Bartłomiej Obrochta};
+  \end{tikzpicture}\\[1.2em]
+  {\small\color{gangray}Sztuczne Sieci Neuronowe $\cdot$ AGH Kraków $\cdot$ 2026}
+\end{center}
+\end{frame}}
+
+\end{document}
