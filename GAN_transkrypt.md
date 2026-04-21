@@ -75,7 +75,7 @@ To nie jest współpraca — to czysta rywalizacja. Ale paradoksalnie, właśnie
 
 ## Slajd 5 / 22 — Generator vs. Discriminator
 
-### `[MACIEJ]`
+### `[BARTEK]`
 
 > *~2 minuty*
 
@@ -91,7 +91,7 @@ GAN jest unikalny, bo łączy oba podejścia w jednym systemie. Generator jest m
 
 ## Slajd 6 / 22 — Architektura GAN
 
-### `[BARTEK]`
+### `[MACIEK]`
 
 > *~3 minuty*
 
@@ -149,7 +149,6 @@ Każda iteracja treningu składa się z dwóch kroków.
 
 **Krok pierwszy: trenujemy Discriminatora.** Generator jest zamrożony — nie aktualizujemy jego wag. Bierzemy mini-batch prawdziwych obrazów z zestawu treningowego i nadajemy im etykietę 1. Generujemy tyle samo fałszywych obrazów przez Generator i nadajemy im etykietę 0. Discriminator dostaje oba batche razem i liczymy Binary Cross Entropy Loss. Robimy backpropagation, ale aktualizujemy wagi **tylko** Discriminatora.
 
-Ważna rzecz: kiedy generujemy fałszywe obrazy do trenowania Discriminatora, używamy `.detach()` w PyTorch. To powoduje, że gradienty nie płyną z powrotem do Generatora — bo w tym kroku chcemy uczyć tylko Discriminatora.
 
 **Krok drugi: trenujemy Generatora.** Teraz Discriminator jest zamrożony. Generujemy nowy batch fałszywych obrazów, ale tym razem bez `.detach()`. I tu jest kluczowy trik — nadajemy tym fałszywym obrazom etykietę **1**, nie 0. Czemu? Bo chcemy nauczyć Generatora generowania takich obrazów, które Discriminator uzna za prawdziwe. Jeśli Discriminator daje fałszywemu obrazowi ocenę 0.3 zamiast 1.0, to jest to sygnał dla Generatora że musi się poprawić. Robimy backpropagation przez Discriminatora do Generatora i aktualizujemy tylko wagi Generatora.
 
@@ -159,7 +158,7 @@ Obie sieci mają osobne optymizatory — tu standardowo używa się Adam z learn
 
 ## Slajd 9 / 22 — Mode Collapse
 
-### `[MACIEJ]`
+### `[BARTEK]`
 
 > *~3 minuty*
 
@@ -336,34 +335,6 @@ Jest też problem biasu — GANy uczą się z danych, więc jeśli dane są uprz
 Dobra wiadomość jest taka, że te same techniki adversarialne, które tworzą deepfake'i, można wykorzystać do ich wykrywania. Detektory deepfake'ów to aktywna dziedzina badań. Digital watermarking pozwala ukryć w wygenerowanym obrazie niewidoczne oznaczenie jego sztucznego pochodzenia.
 
 EU AI Act z 2024 roku wymaga oznaczania treści generowanych przez AI — to regulacyjna odpowiedź na te problemy.
-
----
-
-## Slajd 19 / 22 — Timeline wariantów
-
-### `[MACIEJ]`
-
-> *~1 minuta*
-
-Żeby podsumować historię wariantów — każdy model, który omawialiśmy, odpowiadał na konkretną słabość poprzednika. DCGAN rozwiązał problem jakości na obrazach. CGAN dał kontrolę nad generowanym outputem. WGAN rozwiązał niestabilność treningu i znikające gradienty przez lepszą metrykę. StyleGAN dał kontrolę nad stylem i osiągnął fotorealistyczną jakość. CycleGAN usunął potrzebę sparowanych danych.
-
-Po 2020 roku centrum uwagi badań przeniosło się na diffusion models, ale GANy są nadal aktywnie rozwijane i używane.
-
----
-
-## Slajd 20 / 22 — Demo: notebook
-
-### `[BARTEK]`
-
-> *~5–7 minut*
-
-Przełączamy się teraz na Jupyter Notebook i zobaczymy jak to wszystko wygląda w kodzie.
-
-Zbudowaliśmy prostą implementację GAN na MNIST w PyTorch — celowo prostą, żeby dobrze widać było wszystkie kluczowe elementy. Generator to MLP z czterema warstwami, który z wektora 100 liczb produkuje obraz 784 pikseli. Discriminator to MLP w odwrotną stronę.
-
-W pętli treningowej zobaczycie dokładnie to, o czym mówiliśmy: najpierw krok Discriminatora z `.detach()`, potem krok Generatora z etykietą 1 dla fałszywych obrazów. Będziemy wizualizować generowane obrazy co kilka epok, żebyście mogli zobaczyć jak Generator stopniowo uczy się generować rozpoznawalne cyfry.
-
-Ważne rzeczy do zwrócenia uwagi w kodzie: kiedy jest `.detach()` a kiedy go nie ma — to jest miejsce gdzie najczęściej pojawiają się błędy przy implementacji GANa. I normalizacja danych do zakresu -1 do 1, bo używamy aktywacji Tanh na wyjściu Generatora.
 
 ---
 
