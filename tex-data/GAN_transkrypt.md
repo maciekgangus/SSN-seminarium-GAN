@@ -48,8 +48,17 @@ Yann LeCun, który jest szefem AI w Meta i laureatem nagrody Turinga — czyli o
 
 I to widać na osi czasu — GAN pojawił się w 2014, a już rok później mieliśmy DCGAN, potem WGAN w 2017, StyleGAN w 2018. Tempo było bardzo szybkie.
 
-MCMC-dowiedzieć się
-VAE-dowiedzieć się
+**Cel:** Pokazanie, że GAN-y były gigantycznym skokiem jakościowym.
+
+**Proponowana narracja:**
+
+- **Tło:** „Przed erą GAN-ów modele takie jak VAE często generowały obrazy, które były rozmyte i pozbawione ostrych detali. Wynikało to z natury ich funkcji straty.”
+    
+- **Przełom:** „W 2014 roku nastąpił przełom. Ian Goodfellow, po dyskusji z kolegami, wrócił do domu i rzekomo w jedną noc napisał prototyp zupełnie nowej architektury. Wbrew obawom, że modele zaczną się nawzajem destabilizować, kod zadziałał niemal od razu.”
+    
+- **Waga odkrycia:** „Żeby uświadomić sobie wagę tego odkrycia, wystarczy przytoczyć słowa Yanna LeCuna, który w 2016 roku stwierdził, że GAN-y to najciekawszy pomysł w uczeniu maszynowym ostatniej dekady.”
+    
+- **Oś czasu:** „Po 2014 roku nastąpiła prawdziwa eksplozja: DCGAN przyniósł stabilność, WGAN naprawił problemy matematyczne, a StyleGAN pokazał fotorealizm. I chociaż po 2020 roku modele dyfuzyjne zdominowały rynek, GAN-y nadal mają swoją potężną niszę.”
 
 ---
 
@@ -135,6 +144,28 @@ Jest jeden ważny trik w praktyce. Na początku treningu Generator jest kiepski,
 
 Punkt optymalny tej gry to tak zwana równowaga Nasha — kiedy Generator generuje dane nieodróżnialne od prawdziwych, i Discriminator musi losować (D(x) = 0.5), bo nie umie odróżnić jednych od drugich.
 
+**Cel:** Wyjaśnienie serca optymalizacji GAN-ów i triku z gradientem.
+
+**Proponowana narracja:**
+
+- **Wstęp:** „Goodfellow sformułował uczenie GAN-ów jako problem z teorii gier – grę o sumie zerowej (minimax), gdzie dwie sieci walczą o jedną funkcję wartości $V(D,G)$.”
+    
+- **Perspektywa Dyskryminatora:** „Dyskryminator chce tę funkcję zmaksymalizować. Dla prawdziwych danych $\mathbf{x}$ chce wyrzucić $1$ (wtedy logarytm to $0$), a dla fałszywych $G(\mathbf{z})$ chce wyrzucić $0$ (wtedy $\log(1-0)$ to też $0$). To klasyczna entropia krzyżowa.”
+    
+- **Perspektywa Generatora:** „Generator z kolei chce tę funkcję zminimalizować, oszukując Dyskryminator, by dla fałszywek zwracał $1$.”
+    
+- **Trik inżynieryjny (Non-saturating loss):** „W teorii to piękne, ale w praktyce na początku treningu Generator produkuje kompletny szum. Dyskryminator z łatwością daje mu $0$. Wtedy pochodna funkcji $\log(1-x)$ jest bardzo płaska, co daje nam **zanikające gradienty**. Goodfellow zastosował trik: zamiast minimalizować szansę, że Dyskryminator ma rację, każemy Generatorowi maksymalizować szansę, że Dyskryminator się myli ($\max \log D$). Matematycznie to ten sam punkt optymalny, ale gradient na starcie jest potężny, dając sieci potrzebnego 'kopniaka'.”
+
+## Funkcje straty — wizualizacja
+
+**Cel:** Pokazanie optymalizacji na wykresach i wyjaśnienie Optimum Nasha.
+
+**Proponowana narracja:**
+
+- **Lewy wykres:** „Tutaj widzimy nasz trik w praktyce. Pomarańczowa linia to oryginalna funkcja, która przy zerze (gdy Generator jest słaby) jest płaska – sieć się nie uczy. Przerywana zielona linia to nasz zmieniony obiektyw (non-saturating), który przy zerze ostro nurkuje, dając gigantyczny gradient.”
+    
+- **Prawy wykres (Optimum Nasha):** „Na tym wykresie widzimy przebieg treningu. W idealnym scenariuszu osiągamy optimum Nasha: Generator jest perfekcyjny, a Dyskryminator zgaduje z prawdopodobieństwem 50%. Zwróćcie uwagę na kluczowy detal matematyczny: w tym punkcie strata Dyskryminatora dąży do $2\ln 2$ (około 1.38), ale strata Generatora – ze względu na zastosowanie non-saturating loss – oscyluje wokół połowy tej wartości, czyli $\ln 2$ (około 0.69).”
+
 ---
 
 ## Slajd 8 / 22 — Trening krok po kroku
@@ -156,6 +187,19 @@ Obie sieci mają osobne optymizatory — tu standardowo używa się Adam z learn
 
 ---
 
+### Przestrzeń ukryta (Latent Space)
+
+**Cel:** Zbudowanie intuicji, że model uczy się cech, a nie pikseli.
+
+**Proponowana narracja:**
+
+- **Czym jest z:** „Na wejściu Generator dostaje wektor szumu $\mathbf{z}$. To nie jest zlepek losowych liczb, to skompresowane 'DNA' obrazu. Każdy punkt w tej przestrzeni to potencjalny, realistyczny obraz.”
+    
+- **Ciągłość i interpolacja:** „Spójrzmy na prawą stronę slajdu. Jeśli weźmiemy wektor $\mathbf{z}_1$ (twarz bez uśmiechu) i wektor $\mathbf{z}_2$ (twarz z uśmiechem), możemy poprowadzić między nimi prostą i dokonać interpolacji. Przesuwając się po tej linii, obraz wyjściowy nie będzie losowo migał. Zobaczymy płynną transformację – kąciki ust będą się powoli unosić.”
+    
+- **Wniosek:** „To obala mit, że sieci po prostu zapamiętują obrazki z treningu. Generator faktycznie buduje mapę ludzkich cech semantycznych – rozumie kierunek uśmiechu czy wieku.”
+
+---
 ## Slajd 9 / 22 — Mode Collapse
 
 ### `[BARTEK]`
@@ -202,6 +246,24 @@ Dwie inne ważne rzeczy: **Batch Normalization** po każdej warstwie — bez nie
 
 Ale najefektowniejszy wynik DCGAN to tak zwana **arytmetyka w przestrzeni latentnej**. Wyobraźcie sobie, że trenujemy na zdjęciach twarzy. Bierzemy kilka zdjęć mężczyzny w okularach i uśredniamy ich wektory z. Odejmujemy uśredniony wektor z dla mężczyzny bez okularów. Dodajemy wektor dla kobiety bez okularów. I na wyjściu dostajemy twarz kobiety w okularach. Przestrzeń latentna nie jest losowa — ma sensowną geometrię, gdzie podobne koncepcje leżą blisko siebie.
 
+**Cel:** Omówienie innowacji, które pozwoliły generować obrazy w wysokiej rozdzielczości.
+
+**Proponowana narracja:**
+
+- **Wstęp:** „Oryginalny GAN działał na warstwach w pełni połączonych, co nie skalowało się do większych obrazów. W 2015 DCGAN skutecznie ożenił tę architekturę z sieciami konwolucyjnymi.”
+    
+- **Innowacje:** „Wprowadzono żelazne zasady projektowania. Wyrzucono MaxPooling na rzecz strided convolutions w Dyskryminatorze. W Generatorze użyto transposed convolutions, by stopniowo 'pompować' wektor aż do obrazu 64x64. Dodatkowo wprowadzono Batch Normalization, co drastycznie ustabilizowało trening.”
+
+## DCGAN — Arytmetyka w przestrzeni latentnej
+
+**Cel:** Pokazanie "efektu wow" z algebrą na twarzach.
+
+**Proponowana narracja:**
+
+- **Wstęp:** „Ale DCGAN przeszedł do historii z jeszcze jednego powodu. Udowodnił, że przestrzeń ukryta to pełnoprawna przestrzeń wektorowa, w której można wykonywać algebrę.”
+    
+- **Dowód na obrazkach:** „Jeśli weźmiemy wektor generujący 'mężczyznę w okularach', odejmiemy 'mężczyznę' (zostawiając sam koncept okularów), a dodamy wektor 'kobiety', Generator wypluje nam zdjęcie 'kobiety w okularach'. To ostateczny dowód na to, że model rozkłada świat na zrozumiałe koncepty.”
+
 ---
 
 ## Slajd 12 / 22 — CGAN i Pix2Pix
@@ -237,6 +299,18 @@ WGAN zamienia tę metrykę na **Earth Mover's Distance**, zwaną też odległoś
 W praktyce to wymaga kilku zmian. Po pierwsze, Discriminator jest teraz nazywany **Critic** — nie daje już prawdopodobieństwa z sigmoidy, tylko surowy skalar bez ograniczeń. Po drugie, funkcja straty zmienia postać. Po trzecie, żeby spełnić matematyczne wymagania odległości Wassersteina, Critic musi być funkcją Lipschitza — w oryginalnym WGAN zapewnia się to przez obcinanie wag do małego przedziału, a w późniejszym WGAN-GP przez dodanie kary za gradient. 
 
 Efekty są wyraźne: stabilniejszy trening, brak mode collapse, i co ważne — wartość funkcji straty Critica faktycznie koreluje z jakością generowanych obrazów, czyli w końcu mamy sensowny wskaźnik postępu treningu.
+
+## WGAN — Earth Mover's Distance
+
+**Cel:** Wyjaśnienie, jak WGAN naprawił problem mode collapse i znikających gradientów.
+
+**Proponowana narracja:**
+
+- **Problem z JSD:** „Klasyczny GAN oparty na dywergencji Jensena-Shannona miał poważny problem. Jeśli na początku rozkład prawdziwy i wygenerowany w ogóle się nie pokrywają, ich JS-dywergencja wynosi stałą wartość. Pochodna ze stałej to zero. Widzimy to jako szarą, płaską linię na wykresie. Skoro gradient to zero, sieć utknęła.”
+    
+- **Rozwiązanie WGAN:** „WGAN wprowadził metrykę Wassersteina, intuicyjnie znaną jako Earth Mover's Distance – to koszt przeniesienia 'sterty piasku' danych fałszywych na prawdziwe. Jak widać na pomarańczowej linii, ta odległość rośnie liniowo. A to oznacza, że gradient zawsze istnieje.”
+    
+- **Podsumowanie:** „Zastąpiliśmy Dyskryminator Critikiem, który nie wyrzuca już prawdopodobieństwa z przedziału 0-1, ale płynną ocenę jakości. Dzięki temu trening stał się stabilny, pozbyliśmy się mode collapse, a loss Critica w końcu zaczął korelować z realną jakością obrazu.”
 
 ---
 
